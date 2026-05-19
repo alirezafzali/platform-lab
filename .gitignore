@@ -1,0 +1,8 @@
+*.log
+.DS_Store
+
+# kubeconfig secrets
+kubeconfig.yaml
+
+# temp files
+tmp/

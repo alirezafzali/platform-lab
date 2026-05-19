@@ -1,0 +1,6 @@
+controller:
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/vultr-loadbalancer-protocol: "tcp"
+      service.beta.kubernetes.io/vultr-loadbalancer-label: "staging-ingress"
