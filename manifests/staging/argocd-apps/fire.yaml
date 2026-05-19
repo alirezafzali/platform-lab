@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fire
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/alirezafzali/platform-lab.git
+    targetRevision: main
+    path: manifests/staging/apps/fire
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true

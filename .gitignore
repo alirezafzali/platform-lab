@@ -6,3 +6,8 @@ kubeconfig.yaml
 
 # temp files
 tmp/
+
+# local cluster credentials / Argo CD repo keys
+kubeconfig.yaml
+argocd-platform-lab
+argocd-platform-lab.pub
