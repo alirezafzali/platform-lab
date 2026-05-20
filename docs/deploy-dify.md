@@ -8,6 +8,24 @@ Dify is deployed via the [dify-helm](https://github.com/BorisPolonsky/dify-helm)
 - `kubectl` configured (`kubeconfig.yaml` locally, never commit)
 - Enough capacity on 2 worker nodes (Dify runs PostgreSQL, Redis, Weaviate, API, worker, web, sandbox, proxy, etc.)
 
+## 0. Enable Helm for Kustomize in Argo CD (required once)
+
+Dify uses Kustomize `helmCharts`. Argo CD must pass `--enable-helm` via the **`argocd-cm`** ConfigMap (not `argocd-cmd-params-cm`).
+
+```bash
+export KUBECONFIG=/Users/alireza/platform/vultr/kubeconfig.yaml
+
+kubectl patch configmap argocd-cm -n argocd --type merge \
+  --patch-file manifests/staging/argocd/argocd-cm-enable-helm.patch.yaml
+
+kubectl -n argocd rollout restart deployment argocd-repo-server
+
+# Confirm the setting is present:
+kubectl -n argocd get configmap argocd-cm -o yaml | grep enable-helm
+```
+
+Wait for `argocd-repo-server` to be Ready, then continue. Without this step, the `dify` Application stays `Unknown` with `must specify --enable-helm`.
+
 ## 1. Set Dify secret key (required for production; recommended before first use)
 
 Generate a secret in the cluster (not stored in Git):
@@ -20,13 +38,13 @@ kubectl create secret generic dify-global-secret -n dify \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-Then set `global.appSecretKey` in `manifests/staging/apps/dify/values.yaml` via one of:
+`values.yaml` wires `SECRET_KEY` for `api` and `worker` from that Secret (`secretKeyRef` → `dify-global-secret` / `app-secret-key`). No secret value is stored in Git.
 
-- **Option A:** Copy the key into values (only for a private lab repo), or
-- **Option B:** Use Argo CD UI → Application `dify` → Helm → override `global.appSecretKey`, or
-- **Option C:** After first sync, `helm upgrade` with `--set global.appSecretKey=...` (if managing outside Argo)
+Create the Secret **before** API/worker pods start (or restart them after creating it):
 
-For the first bootstrap, the chart default may apply if `appSecretKey` is empty; rotate before exposing publicly.
+```bash
+kubectl -n dify rollout restart deployment -l app.kubernetes.io/instance=dify
+```
 
 ## 2. Commit and push Git changes
 
@@ -71,20 +89,47 @@ Complete the admin account setup, then log in at **https://dify.70.34.202.247.ni
 
 ## 5. Argo CD notes
 
-- Path `manifests/staging/apps/dify` uses Kustomize **helmCharts** (requires Argo CD with Helm enabled on the repo-server, default in recent versions).
+- Path `manifests/staging/apps/dify` uses Kustomize **helmCharts** (requires step 0: `kustomize.buildOptions: --enable-helm` on `argocd-cm`).
+- Patch file: `manifests/staging/argocd/argocd-cm-enable-helm.patch.yaml` (merge patch only; do not `kubectl apply` it as a full ConfigMap).
 - `prune: false` avoids deleting PVCs/data on accidental manifest changes; enable after you trust the manifest set.
 - To change the public hostname, edit `values.yaml` (`global.*Domain` and `ingress.hosts`) and sync.
 
-## 6. Troubleshooting
+## 6. Fix failed PVCs after storage config change (Vultr)
+
+If pods were **Pending** with `access mode is not supported`, set RWO under `api.persistence.persistentVolumeClaim` and `pluginDaemon.persistence.persistentVolumeClaim` (not top-level `persistence.accessModes` — the chart reads the nested key).
+
+After pushing updated `values.yaml`, clean up stuck resources (no data to keep yet):
+
+```bash
+export KUBECONFIG=/Users/alireza/platform/vultr/kubeconfig.yaml
+
+# Remove failed / old PVCs so they can be recreated
+kubectl delete pvc -n dify --all
+
+# Remove read replica left from earlier chart defaults (prune is off)
+kubectl delete sts dify-postgresql-read -n dify --ignore-not-found
+kubectl delete svc dify-postgresql-read dify-postgresql-read-hl -n dify --ignore-not-found
+
+# Refresh Argo and sync
+kubectl -n argocd annotate application dify argocd.argoproj.io/refresh=hard --overwrite
+
+kubectl get pvc,pods -n dify -w
+```
+
+If a PVC stays `Pending`, check: `kubectl get storageclass` and align `global.storageClass` in `values.yaml` (e.g. `vultr-block-storage` vs `vultr-block-storage-hdd`).
+
+## 7. Troubleshooting
 
 | Issue | Check |
 |-------|--------|
 | Pending pods | `kubectl describe pod -n dify <name>` — often CPU/memory or PVC |
+| `access mode is not supported` | RWX on Vultr block storage — use updated `values.yaml` (api/plugin persistence off) |
 | Ingress 502 | Pods ready? `kubectl -n dify get pods` |
 | Certificate not ready | `kubectl -n dify describe certificate dify-tls` |
-| Argo sync failed on Helm | Argo CD logs; ensure chart repo is reachable from cluster |
+| Argo sync failed on Helm | Run step 0; `describe application dify` should not show `must specify --enable-helm` |
+| `must specify --enable-helm` | Patch `argocd-cm` and restart `argocd-repo-server` (step 0) |
 
-## 7. After install
+## 8. After install
 
 - **Tools → MCP** to attach MCP servers (HTTP transport).
 - **API keys** per app under API Access in the Dify UI.

@@ -1,10 +1,10 @@
 # Staging overrides for BorisPolonsky/dify-helm (chart dify).
 # Pin chart version in kustomization.yaml.
-# Public URL must match ingress host below.
+# Vultr block storage supports ReadWriteOnce only (not ReadWriteMany).
 
 global:
   edition: SELF_HOSTED
-  # Create before first sync (see docs/deploy-dify.md). Empty uses chart default for bootstrap only.
+  storageClass: vultr-block-storage-hdd
   appSecretKey: ""
   consoleApiDomain: "https://dify.70.34.202.247.nip.io"
   consoleWebDomain: "https://dify.70.34.202.247.nip.io"
@@ -32,9 +32,18 @@ ingress:
       hosts:
         - dify.70.34.202.247.nip.io
 
-# Smaller footprint for 2-node staging cluster
 api:
   replicas: 1
+  persistence:
+    persistentVolumeClaim:
+      accessModes: ReadWriteOnce
+      storageClass: vultr-block-storage-hdd
+  extraEnv:
+    - name: SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dify-global-secret
+          key: app-secret-key
   resources:
     requests:
       cpu: 250m
@@ -44,12 +53,32 @@ api:
 
 worker:
   replicas: 1
+  extraEnv:
+    - name: SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dify-global-secret
+          key: app-secret-key
   resources:
     requests:
       cpu: 250m
       memory: 512Mi
     limits:
       memory: 2Gi
+
+beat:
+  extraEnv:
+    - name: SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dify-global-secret
+          key: app-secret-key
+
+pluginDaemon:
+  persistence:
+    persistentVolumeClaim:
+      accessModes: ReadWriteOnce
+      storageClass: vultr-block-storage-hdd
 
 web:
   replicas: 1
@@ -62,11 +91,15 @@ web:
 
 postgresql:
   enabled: true
-  postgresql:
-    architecture: standalone
+  architecture: standalone
+  readReplicas:
+    replicaCount: 0
   primary:
     persistence:
       size: 10Gi
+      storageClass: vultr-block-storage-hdd
+      accessModes:
+        - ReadWriteOnce
     resources:
       requests:
         cpu: 250m
@@ -80,6 +113,9 @@ redis:
   master:
     persistence:
       size: 2Gi
+      storageClass: vultr-block-storage-hdd
+      accessModes:
+        - ReadWriteOnce
     resources:
       requests:
         cpu: 100m
@@ -89,6 +125,9 @@ redis:
 
 weaviate:
   enabled: true
+  storage:
+    size: 10Gi
+    storageClassName: vultr-block-storage-hdd
   resources:
     requests:
       cpu: 250m

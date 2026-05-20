@@ -1,0 +1,4 @@
+# Merge patch for the live argocd-cm ConfigMap (do not kubectl apply as a full ConfigMap).
+# Applying only kustomize.buildOptions would wipe other Argo CD settings.
+data:
+  kustomize.buildOptions: --enable-helm
