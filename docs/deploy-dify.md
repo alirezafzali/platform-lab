@@ -98,6 +98,10 @@ Complete the admin account setup, then log in at **https://dify.70.34.202.247.ni
 
 If pods were **Pending** with `access mode is not supported`, set RWO under `api.persistence.persistentVolumeClaim` and `pluginDaemon.persistence.persistentVolumeClaim` (not top-level `persistence.accessModes` — the chart reads the nested key).
 
+**Important:** Argo CD reads `origin/main` on GitHub. If `git status` shows "ahead of origin/main", run `git push origin main` before expecting PVC fixes to apply.
+
+Vultr HDD (`vultr-block-storage-hdd`) requires **minimum 40Gi** per volume. Values use 40Gi for all PVCs.
+
 After pushing updated `values.yaml`, clean up stuck resources (no data to keep yet):
 
 ```bash

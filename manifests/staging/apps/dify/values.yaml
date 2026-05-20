@@ -38,6 +38,7 @@ api:
     persistentVolumeClaim:
       accessModes: ReadWriteOnce
       storageClass: vultr-block-storage-hdd
+      size: 40Gi
   extraEnv:
     - name: SECRET_KEY
       valueFrom:
@@ -79,6 +80,7 @@ pluginDaemon:
     persistentVolumeClaim:
       accessModes: ReadWriteOnce
       storageClass: vultr-block-storage-hdd
+      size: 40Gi
 
 web:
   replicas: 1
@@ -96,7 +98,7 @@ postgresql:
     replicaCount: 0
   primary:
     persistence:
-      size: 10Gi
+      size: 40Gi
       storageClass: vultr-block-storage-hdd
       accessModes:
         - ReadWriteOnce
@@ -112,7 +114,7 @@ redis:
   architecture: standalone
   master:
     persistence:
-      size: 2Gi
+      size: 40Gi
       storageClass: vultr-block-storage-hdd
       accessModes:
         - ReadWriteOnce
@@ -126,7 +128,7 @@ redis:
 weaviate:
   enabled: true
   storage:
-    size: 10Gi
+    size: 40Gi
     storageClassName: vultr-block-storage-hdd
   resources:
     requests:
