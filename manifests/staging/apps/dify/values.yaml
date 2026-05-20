@@ -1,0 +1,97 @@
+# Staging overrides for BorisPolonsky/dify-helm (chart dify).
+# Pin chart version in kustomization.yaml.
+# Public URL must match ingress host below.
+
+global:
+  edition: SELF_HOSTED
+  # Create before first sync (see docs/deploy-dify.md). Empty uses chart default for bootstrap only.
+  appSecretKey: ""
+  consoleApiDomain: "https://dify.70.34.202.247.nip.io"
+  consoleWebDomain: "https://dify.70.34.202.247.nip.io"
+  serviceApiDomain: "https://dify.70.34.202.247.nip.io"
+  appApiDomain: "https://dify.70.34.202.247.nip.io"
+  appWebDomain: "https://dify.70.34.202.247.nip.io"
+  filesDomain: "https://dify.70.34.202.247.nip.io"
+  triggerDomain: "https://dify.70.34.202.247.nip.io"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: cluster-issuer-staging
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: dify.70.34.202.247.nip.io
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: dify-tls
+      hosts:
+        - dify.70.34.202.247.nip.io
+
+# Smaller footprint for 2-node staging cluster
+api:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+worker:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+web:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+postgresql:
+  enabled: true
+  postgresql:
+    architecture: standalone
+  primary:
+    persistence:
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+redis:
+  enabled: true
+  architecture: standalone
+  master:
+    persistence:
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+
+weaviate:
+  enabled: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi

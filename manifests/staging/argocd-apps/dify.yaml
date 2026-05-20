@@ -1,24 +1,33 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: fire
+  name: dify
   namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: platform-lab
+    platform.environment: staging
 spec:
   project: default
 
   source:
     repoURL: https://github.com/alirezafzali/platform-lab.git
     targetRevision: main
-    path: manifests/staging/apps/fire
+    path: manifests/staging/apps/dify
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: app
+    namespace: dify
 
   syncPolicy:
     automated:
-      prune: true
+      prune: false
       selfHeal: true
-
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dify
+
+helmCharts:
+  - name: dify
+    repo: https://borispolonsky.github.io/dify-helm
+    version: 0.36.0
+    releaseName: dify
+    namespace: dify
+    valuesFile: values.yaml
+    includeCRDs: true
